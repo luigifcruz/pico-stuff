@@ -23,7 +23,7 @@
 #define ASSERT_OK(X) { if (X == false) return false; };
 
 typedef struct {
-    int16_t	 AC1;
+    int16_t  AC1;
     int16_t  AC2;
     int16_t  AC3;
     uint16_t AC4;
