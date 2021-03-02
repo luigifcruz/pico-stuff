@@ -16,3 +16,7 @@ $ make -j$(nproc -n)
 
 ## Debug
 For debug add `#define DEBUG` before the `#include` of a header-only library.
+
+## Usage
+Q: How can I use these libraries on my project?
+A: Just copy and paste the header-only library file to your project.
