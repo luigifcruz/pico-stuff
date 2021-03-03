@@ -7,3 +7,6 @@
 [submodule "pico-extras"]
 	path = pico-extras
 	url = git@github.com:raspberrypi/pico-extras.git
+[submodule "pico-playground"]
+	path = pico-playground
+	url = git@github.com:raspberrypi/pico-playground.git
