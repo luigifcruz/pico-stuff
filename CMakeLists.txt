@@ -8,4 +8,5 @@ project(pico-stuff)
 pico_sdk_init()
 
 add_subdirectory(bmp180)
-add_subdirectory(cdc_ecm_device)
+add_subdirectory(iperf_server)
+add_subdirectory(tcp_server)

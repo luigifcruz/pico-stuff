@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(pico-cdc_ecm_device)
+project(pico-iperf-server)
 
-add_executable(cdc_ecm_device
+add_executable(iperf_server
     usb_descriptors.c
     main.c
 )
 
-target_link_libraries(cdc_ecm_device
+target_link_libraries(iperf_server
     pico_stdlib
     pico_stdio
     tinyusb_host
@@ -16,11 +16,11 @@ target_link_libraries(cdc_ecm_device
     lwip
 )
 
-target_include_directories(cdc_ecm_device PRIVATE .)
+target_include_directories(iperf_server PRIVATE .)
 
-pico_enable_stdio_usb(cdc_ecm_device 1)
-pico_enable_stdio_uart(cdc_ecm_device 0)
+pico_enable_stdio_usb(iperf_server 1)
+pico_enable_stdio_uart(iperf_server 0)
 
-pico_add_extra_outputs(cdc_ecm_device)
+pico_add_extra_outputs(iperf_server)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
