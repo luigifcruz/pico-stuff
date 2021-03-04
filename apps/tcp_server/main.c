@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2020 Peter Lawrence
@@ -39,7 +39,7 @@ and likely their manufacturer has not tested such functionality.  Some code work
 The smartphone may only have an ECM driver, but refuse to automatically pick ECM (unlike the OSes above);
 try modifying ./examples/devices/net_lwip_webserver/usb_descriptors.c so that CONFIG_ID_ECM is default.
 
-The smartphone may be artificially picky about which Ethernet MAC address to recognize; if this happens, 
+The smartphone may be artificially picky about which Ethernet MAC address to recognize; if this happens,
 try changing the first byte of tud_network_mac_address[] below from 0x02 to 0x00 (clearing bit 1).
 */
 
@@ -50,8 +50,13 @@ try changing the first byte of tud_network_mac_address[] below from 0x02 to 0x00
 #include "dnserver.h"
 #include "lwip/init.h"
 #include "lwip/timeouts.h"
+#include "lwip/api.h"
+#include "lwip/sys.h"
+#include "lwip/udp.h"
 
 #include "httpd.h"
+
+#include "bmp180.h"
 
 /* lwip context */
 static struct netif netif_data;
@@ -155,7 +160,7 @@ bool dns_query_proc(const char *name, ip_addr_t *addr)
 
 bool tud_network_recv_cb(const uint8_t *src, uint16_t size)
 {
-  /* this shouldn't happen, but if we get another packet before 
+  /* this shouldn't happen, but if we get another packet before
   parsing the previous, we must signal our inability to accept it */
   if (received_frame) return false;
 
@@ -220,6 +225,25 @@ void tud_network_init_cb(void)
   }
 }
 
+bmp_t bmp;
+
+static void udpecho_raw_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr, u16_t port)
+{
+	if(p == NULL)
+		return;
+
+    struct pbuf *pr;
+    uint8_t buf[4];
+
+    pr = pbuf_alloc(PBUF_TRANSPORT, 4, PBUF_POOL);
+    pr->len = 4;
+    pr->tot_len = 4;
+    pr->payload = buf;
+
+	udp_sendto(pcb, pr, addr, port);
+	pbuf_free(p);
+}
+
 int main(void)
 {
   /* initialize TinyUSB */
@@ -231,6 +255,12 @@ int main(void)
   while (!netif_is_up(&netif_data));
   while (dhserv_init(&dhcp_config) != ERR_OK);
   while (dnserv_init(&ipaddr, 53, dns_query_proc) != ERR_OK);
+
+  struct udp_pcb *pcb;
+  pcb = udp_new();
+  udp_bind(pcb, IP_ADDR_ANY, 7777);
+  udp_recv(pcb , udpecho_raw_recv, pcb);
+
   httpd_init();
 
   while (1)
