@@ -232,15 +232,9 @@ static void udpecho_raw_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, str
 	if(p == NULL)
 		return;
 
-    struct pbuf *pr;
-    uint8_t buf[4];
+    *(char*)(p->payload + 1) = '0';
 
-    pr = pbuf_alloc(PBUF_TRANSPORT, 4, PBUF_POOL);
-    pr->len = 4;
-    pr->tot_len = 4;
-    pr->payload = buf;
-
-	udp_sendto(pcb, pr, addr, port);
+	udp_sendto(pcb, p, addr, port);
 	pbuf_free(p);
 }
 

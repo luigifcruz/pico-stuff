@@ -1,2 +1,3 @@
 add_subdirectory(iperf_server)
 add_subdirectory(tcp_server)
+add_subdirectory(adc_dma_chain)
