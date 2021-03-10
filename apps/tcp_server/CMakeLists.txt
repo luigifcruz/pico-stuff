@@ -14,13 +14,14 @@ target_link_libraries(tcp_server
     tinyusb_board
     tinyusb_net
     hardware_i2c
+    hardware_adc
+    hardware_dma
+    hardware_irq
+    hardware_pwm
     lwip
 )
 
-target_include_directories(tcp_server PRIVATE
-    .
-    ${CMAKE_SOURCE_DIR}/lib/bmp180
-)
+target_include_directories(tcp_server PRIVATE .)
 
 pico_enable_stdio_usb(tcp_server 1)
 pico_enable_stdio_uart(tcp_server 0)
