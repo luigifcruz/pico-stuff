@@ -1,4 +1,6 @@
 // Initial TinyUSB RNDIS written by Peter Lawrence.
+// Modifications were made by Luigi Cruz.
+
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
@@ -168,9 +170,9 @@ void tud_network_init_cb(void) {
     }
 }
 
-bool running = false;
-bool connected = false;
+bool streaming = false;
 struct tcp_pcb* client;
+struct repeating_timer timer;
 
 //#define DEBUG
 #define CAPTURE_CHANNEL 0
@@ -183,18 +185,12 @@ uint8_t capture_buf_b[CAPTURE_DEPTH];
 void dma_handler(uint8_t* buffer, int id) {
 #ifdef DEBUG
     char str[64];
-
     int len = sprintf(str, "DMA IRQ %d [%d %d ... %d]\n", id, buffer[0], buffer[1], buffer[CAPTURE_DEPTH-1]);
-
-    if (connected) {
-        tcp_write(client, str, len, 0);
-        tcp_output(client);
-    }
+    tcp_write(client, str, len, 0);
+    tcp_output(client);
 #else
-    if (connected) {
-        tcp_write(client, buffer, CAPTURE_DEPTH, 0x01);
-        tcp_output(client);
-    }
+    tcp_write(client, buffer, CAPTURE_DEPTH, 0x01);
+    tcp_output(client);
 #endif
 }
 
@@ -210,8 +206,8 @@ void dma_handler_b() {
     dma_channel_set_write_addr(dma_chan_b, &capture_buf_b, false);
 }
 
-static void start_stream() {
-    adc_gpio_init(26 + CAPTURE_CHANNEL);
+static void init_adc_dma_chain() {
+adc_gpio_init(26 + CAPTURE_CHANNEL);
     adc_init();
     adc_select_input(CAPTURE_CHANNEL);
     adc_fifo_setup(
@@ -268,19 +264,38 @@ static void start_stream() {
     irq_set_exclusive_handler(DMA_IRQ_1, dma_handler_b);
     irq_set_enabled(DMA_IRQ_1, true);
 
-    adc_run(true);
-
-    running = true;
+    adc_run(false);
 }
 
-static void close_conn(struct tcp_pcb *pcb){
+static void start_stream() {
+    dma_channel_set_write_addr(dma_chan_a, &capture_buf_a, true);
+    dma_channel_set_write_addr(dma_chan_b, &capture_buf_b, false);
+    adc_run(true);
+    gpio_put(PICO_DEFAULT_LED_PIN, 1);
+    streaming = true;
+}
+
+static void stop_stream() {
+    adc_run(false);
+    adc_fifo_drain();
+    dma_channel_set_write_addr(dma_chan_a, &capture_buf_a, false);
+    dma_channel_set_write_addr(dma_chan_b, &capture_buf_b, false);
+    gpio_put(PICO_DEFAULT_LED_PIN, 0);
+    streaming = false;
+}
+
+static void srv_close(struct tcp_pcb *pcb){
+    stop_stream();
+
     tcp_arg(pcb, NULL);
     tcp_sent(pcb, NULL);
     tcp_recv(pcb, NULL);
     tcp_close(pcb);
+}
 
-    running = false;
-    connected = false;
+static void srv_err(void *arg, err_t err) {
+    // Probably an indication that the client connection went kaput! Stopping stream...
+    srv_close(client);
 }
 
 static err_t srv_receive(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err) {
@@ -290,8 +305,9 @@ static err_t srv_receive(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t e
     tcp_recved(pcb, p->tot_len);
     tcp_sent(pcb, NULL);
 
-    client = pcb;
-    connected = true;
+    // The connection is closed if the client sends "X".
+    if (((char*)p->payload)[0] == 'X')
+        srv_close(pcb);
 
 exception:
     pbuf_free(p);
@@ -299,16 +315,39 @@ exception:
 }
 
 static err_t srv_accept(void * arg, struct tcp_pcb * pcb, err_t err) {
-    tcp_setprio(pcb, TCP_PRIO_MIN);
+    if (err != ERR_OK)
+        return err;
+
+    tcp_setprio(pcb, TCP_PRIO_MAX);
     tcp_recv(pcb, srv_receive);
-    tcp_err(pcb, NULL);
+    tcp_err(pcb, srv_err);
     tcp_poll(pcb, NULL, 4);
-    return ERR_OK;
+
+    client = pcb;
+    start_stream();
+
+    return err;
+}
+
+bool led_timer(struct repeating_timer *t) {
+    if (!streaming) {
+        int current = gpio_get(PICO_DEFAULT_LED_PIN);
+        gpio_put(PICO_DEFAULT_LED_PIN, !current);
+    }
+    return true;
 }
 
 int main(void) {
-    // Initialize everything.
     board_init();
+
+    // Init built-in LED.
+    gpio_init(PICO_DEFAULT_LED_PIN);
+    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+
+    // Init ADC DMA chain.
+    init_adc_dma_chain();
+
+    // Init network stack.
     tusb_init();
     init_lwip();
 
@@ -322,26 +361,16 @@ int main(void) {
     pcb->so_options |= SOF_KEEPALIVE;
     pcb->keep_intvl = 75000000;
     tcp_bind(pcb, IP_ADDR_ANY, 7777);
+
+    // Start listening for connections.
     struct tcp_pcb* listen = tcp_listen(pcb);
     tcp_accept(listen, srv_accept);
 
-    // Start a test signal.
-    gpio_set_function(0, GPIO_FUNC_PWM);
-    uint slice_num = pwm_gpio_to_slice_num(0);
-    pwm_set_wrap(slice_num, 1);
-    pwm_set_chan_level(slice_num, PWM_CHAN_A, 1);
-    uint32_t f_sys = clock_get_hz(clk_sys); // typically 125'000'000 Hz
-    const int top = 4095;
-    const int f_pwm = 80;
-    float scale = (top+1) * f_pwm;
-    float divider = f_sys / scale;
-    pwm_set_clkdiv(slice_num, divider);
-    pwm_set_enabled(slice_num, true);
+    // Start blinking LED indicator.
+    add_repeating_timer_ms(250, led_timer, NULL, &timer);
 
     // Listen to events.
     while (1) {
-        if (connected && !running) start_stream();
-
         tud_task();
         service_traffic();
     }
