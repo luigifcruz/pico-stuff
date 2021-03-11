@@ -2,18 +2,16 @@
 // Modifications were made by Luigi Cruz.
 
 #include <stdio.h>
+#include "bsp/board.h"
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
 #include "hardware/dma.h"
 #include "hardware/irq.h"
-#include "hardware/pwm.h"
-#include "hardware/clocks.h"
 
-#include "bsp/board.h"
 #include "tusb.h"
-
 #include "dhserver.h"
 #include "dnserver.h"
+
 #include "lwip/init.h"
 #include "lwip/timeouts.h"
 #include "lwip/api.h"
