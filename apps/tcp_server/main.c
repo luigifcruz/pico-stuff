@@ -269,7 +269,6 @@ static void start_stream() {
     dma_channel_set_write_addr(dma_chan_a, &capture_buf_a, true);
     dma_channel_set_write_addr(dma_chan_b, &capture_buf_b, false);
     adc_run(true);
-    gpio_put(PICO_DEFAULT_LED_PIN, 1);
     streaming = true;
 }
 
@@ -278,7 +277,6 @@ static void stop_stream() {
     adc_fifo_drain();
     dma_channel_set_write_addr(dma_chan_a, &capture_buf_a, false);
     dma_channel_set_write_addr(dma_chan_b, &capture_buf_b, false);
-    gpio_put(PICO_DEFAULT_LED_PIN, 0);
     streaming = false;
 }
 
@@ -297,15 +295,17 @@ static void srv_err(void *arg, err_t err) {
 }
 
 static err_t srv_receive(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err) {
-    if (err != ERR_OK && p != NULL)
+    if (err != ERR_OK && p != NULL) {
         goto exception;
+    }
 
     tcp_recved(pcb, p->tot_len);
     tcp_sent(pcb, NULL);
 
     // The connection is closed if the client sends "X".
-    if (((char*)p->payload)[0] == 'X')
+    if (((char*)p->payload)[0] == 'X') {
         srv_close(pcb);
+    }
 
 exception:
     pbuf_free(p);
@@ -313,9 +313,10 @@ exception:
 }
 
 static err_t srv_accept(void * arg, struct tcp_pcb * pcb, err_t err) {
-    if (err != ERR_OK)
+    if (err != ERR_OK) {
         return err;
-
+    }
+        
     tcp_setprio(pcb, TCP_PRIO_MAX);
     tcp_recv(pcb, srv_receive);
     tcp_err(pcb, srv_err);
@@ -328,10 +329,11 @@ static err_t srv_accept(void * arg, struct tcp_pcb * pcb, err_t err) {
 }
 
 bool led_timer(struct repeating_timer *t) {
-    if (!streaming) {
-        int current = gpio_get(PICO_DEFAULT_LED_PIN);
-        gpio_put(PICO_DEFAULT_LED_PIN, !current);
+    int status = 1;
+    if (streaming) {
+        status = !gpio_get(PICO_DEFAULT_LED_PIN);
     }
+    gpio_put(PICO_DEFAULT_LED_PIN, status);
     return true;
 }
 
@@ -364,7 +366,7 @@ int main(void) {
     struct tcp_pcb* listen = tcp_listen(pcb);
     tcp_accept(listen, srv_accept);
 
-    // Start blinking LED indicator.
+    // Start LED indicator.
     add_repeating_timer_ms(250, led_timer, NULL, &timer);
 
     // Listen to events.
