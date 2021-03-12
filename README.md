@@ -3,6 +3,7 @@ I add my Pi Pico (RP2040) stuff here. There are complete [apps](/apps) and [libr
 
 ## Libraries
 - [BMP180](/lib/bmp180): Header-only library for the BMP180 atmospheric pressure sensor.
+- [USB Network Stack](/lib/usb_network_stack): Library using TinyUSB's implementation of the RNDIS protocol to enable network over USB.
 
 ## Apps
 - [PiccoloSDR](/apps/piccolosdr): A primitive direct-sampling SDR.

@@ -8,4 +8,4 @@ target_link_libraries(bmp180
     hardware_i2c
 )
 
-target_include_directories (bmp180 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(bmp180 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
