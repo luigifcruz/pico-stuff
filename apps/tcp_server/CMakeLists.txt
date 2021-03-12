@@ -14,8 +14,6 @@ target_link_libraries(tcp_server
     tinyusb_board
     tinyusb_net
     hardware_adc
-    hardware_dma
-    hardware_irq
     lwip
 )
 
