@@ -2,7 +2,7 @@
 I add my Pi Pico (RP2040) stuff here. There are complete [apps](/apps) and [libraries](/lib) for sensors or complicated tasks.
 
 ## Libraries
-- [BMP180](/lib/bmp1880): Header-only library for the BMP180 atmospheric pressure sensor.
+- [BMP180](/lib/bmp180): Header-only library for the BMP180 atmospheric pressure sensor.
 
 ## Apps
 - [PiccoloSDR](/apps/piccolosdr): A primitive direct-sampling SDR.
