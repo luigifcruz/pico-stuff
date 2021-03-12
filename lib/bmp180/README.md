@@ -1,0 +1,2 @@
+# BMP180 Library
+This is a library for the BMP180 atmospheric pressure sensor. It can output the temperature and the barometric pressure. For an example of how to use it, check out the [barometer](/apps/barometer) example.
