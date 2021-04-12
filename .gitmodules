@@ -3,7 +3,8 @@
 	url = git@github.com:raspberrypi/pico-examples.git
 [submodule "pico-sdk"]
 	path = pico-sdk
-	url = git@github.com:raspberrypi/pico-sdk.git
+	branch = patch-piccolosdr
+	url = git@github.com:luigifcruz/pico-sdk.git
 [submodule "pico-extras"]
 	path = pico-extras
 	url = git@github.com:raspberrypi/pico-extras.git
