@@ -44,7 +44,7 @@ void dma_handler_b() {
 }
 
 static void init_adc_dma_chain() {
-adc_gpio_init(26 + CAPTURE_CHANNEL);
+    adc_gpio_init(26 + CAPTURE_CHANNEL);
     adc_init();
     adc_select_input(CAPTURE_CHANNEL);
     adc_fifo_setup(
@@ -95,10 +95,12 @@ adc_gpio_init(26 + CAPTURE_CHANNEL);
 
     dma_channel_set_irq0_enabled(dma_chan_a, true);
     irq_set_exclusive_handler(DMA_IRQ_0, dma_handler_a);
+    irq_set_priority(DMA_IRQ_0, 0xFF);
     irq_set_enabled(DMA_IRQ_0, true);
 
     dma_channel_set_irq1_enabled(dma_chan_b, true);
     irq_set_exclusive_handler(DMA_IRQ_1, dma_handler_b);
+    irq_set_priority(DMA_IRQ_1, 0xFF);
     irq_set_enabled(DMA_IRQ_1, true);
 
     adc_run(false);
@@ -155,8 +157,8 @@ static err_t srv_accept(void * arg, struct tcp_pcb * pcb, err_t err) {
     if (err != ERR_OK) {
         return err;
     }
-        
-    tcp_setprio(pcb, TCP_PRIO_MAX);
+
+    tcp_setprio(pcb, TCP_PRIO_MIN);
     tcp_recv(pcb, srv_receive);
     tcp_err(pcb, srv_err);
     tcp_poll(pcb, NULL, 4);
