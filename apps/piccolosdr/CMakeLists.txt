@@ -9,6 +9,7 @@ target_link_libraries(piccolosdr LINK_PUBLIC
     hardware_adc
     hardware_dma
     hardware_irq
+    pico_sync
 )
 
 pico_add_extra_outputs(piccolosdr)
