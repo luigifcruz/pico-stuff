@@ -8,28 +8,31 @@
 #include "usb_network.h"
 
 bool streaming = false;
-struct tcp_pcb* client;
+struct tcp_pcb* control = NULL;
 struct repeating_timer timer;
 
 #define CAPTURE_CHANNEL 0
-#define CAPTURE_DEPTH 500
+#define CAPTURE_DEPTH 1472
 
-uint head = 0;
-bool dataval = false;
 uint dma_chan_a, dma_chan_b;
-uint8_t capture_buf_a[CAPTURE_DEPTH];
-uint8_t capture_buf_b[CAPTURE_DEPTH];
+struct pbuf* pbuf_a;
+struct pbuf* pbuf_b;
+
+static void printc(char* s) {
+    if (control) {
+        tcp_write(control, s, strlen(s), TCP_WRITE_FLAG_COPY);
+        tcp_output(control);
+    }
+}
 
 static void dma_handler_a() {
-    dataval = true;
-    head = 0;
     dma_hw->ints0 = 1u << dma_chan_a;
+    dma_channel_set_write_addr(dma_chan_a, pbuf_a->payload, false);
 }
 
 static void dma_handler_b() {
-    dataval = true;
-    head = 1;
     dma_hw->ints1 = 1u << dma_chan_b;
+    dma_channel_set_write_addr(dma_chan_b, pbuf_b->payload, false);
 }
 
 static void init_adc_dma_chain() {
@@ -69,14 +72,14 @@ static void init_adc_dma_chain() {
     channel_config_set_chain_to(&dma_cfg_b, dma_chan_a);
 
     dma_channel_configure(dma_chan_a, &dma_cfg_a,
-        capture_buf_a,  // dst
+        pbuf_a->payload,// dst
         &adc_hw->fifo,  // src
         CAPTURE_DEPTH,  // transfer count
         true            // start now
     );
 
     dma_channel_configure(dma_chan_b, &dma_cfg_b,
-        capture_buf_b,  // dst
+        pbuf_b->payload, // dst
         &adc_hw->fifo,  // src
         CAPTURE_DEPTH,  // transfer count
         false           // start now
@@ -95,33 +98,40 @@ static void init_adc_dma_chain() {
     adc_run(false);
 }
 
-static void start_stream() {
-    dma_channel_set_write_addr(dma_chan_a, &capture_buf_a, true);
-    dma_channel_set_write_addr(dma_chan_b, &capture_buf_b, false);
+static void start_stream(struct tcp_pcb *pcb) {
+    if (streaming) {
+        printc("[PICCOLO] Stream already started.\n");
+        return;
+    }
+
+    dma_channel_set_write_addr(dma_chan_a, pbuf_a->payload, true);
+    dma_channel_set_write_addr(dma_chan_b, pbuf_b->payload, false);
     adc_run(true);
+
     streaming = true;
+    printc("[PICCOLO] Stream started.\n");
 }
 
-static void stop_stream() {
+static void stop_stream(struct tcp_pcb *pcb) {
+    if (!streaming) {
+        printc("[PICCOLO] Stream already stopped.\n");
+        return;
+    }
+
     adc_run(false);
     adc_fifo_drain();
-    dma_channel_set_write_addr(dma_chan_a, &capture_buf_a, false);
-    dma_channel_set_write_addr(dma_chan_b, &capture_buf_b, false);
+    dma_channel_set_write_addr(dma_chan_a, pbuf_a->payload, false);
+    dma_channel_set_write_addr(dma_chan_b, pbuf_b->payload, false);
+
     streaming = false;
-}
-
-static void srv_close(struct tcp_pcb *pcb){
-    stop_stream();
-
-    tcp_arg(pcb, NULL);
-    tcp_sent(pcb, NULL);
-    tcp_recv(pcb, NULL);
-    tcp_close(pcb);
+    printc("[PICCOLO] Stream stopped.\n");
 }
 
 static void srv_err(void *arg, err_t err) {
-    // Probably an indication that the client connection went kaput! Stopping stream...
-    srv_close(client);
+    tcp_arg(control, NULL);
+    tcp_sent(control, NULL);
+    tcp_recv(control, NULL);
+    tcp_close(control);
 }
 
 static err_t srv_receive(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err) {
@@ -132,9 +142,12 @@ static err_t srv_receive(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t e
     tcp_recved(pcb, p->tot_len);
     tcp_sent(pcb, NULL);
 
-    // The connection is closed if the client sends "X".
-    if (((char*)p->payload)[0] == 'X') {
-        srv_close(pcb);
+    if (((char*)p->payload)[0] == 'S') {
+        start_stream(pcb);
+    }
+
+    if (((char*)p->payload)[0] == 'E') {
+        stop_stream(pcb);
     }
 
 exception:
@@ -152,11 +165,10 @@ static err_t srv_accept(void * arg, struct tcp_pcb * pcb, err_t err) {
 
     tcp_setprio(pcb, TCP_PRIO_MIN);
     tcp_recv(pcb, srv_receive);
-    tcp_err(pcb, srv_err);
+    tcp_err(pcb, NULL);
     tcp_poll(pcb, NULL, 4);
 
-    client = pcb;
-    start_stream();
+    control = pcb;
 
     return err;
 }
@@ -181,38 +193,34 @@ int main(void) {
     // Init network stack.
     network_init();
 
-    // Start TCP server.
-    struct tcp_pcb* pcb = tcp_new();
-    pcb->so_options |= SOF_KEEPALIVE;
-    pcb->keep_intvl = 75000000;
-    tcp_bind(pcb, IP_ADDR_ANY, 7777);
+    // Start control TCP port.
+    struct tcp_pcb* cpcb = tcp_new();
+    cpcb->so_options |= SOF_KEEPALIVE;
+    cpcb->keep_intvl = 75000000;
+    tcp_bind(cpcb, IP_ADDR_ANY, 7777);
 
-    // Start listening for connections.
-    struct tcp_pcb* listen = tcp_listen(pcb);
+    // Start data UDP port.
+    ip_addr_t client;
+    IP4_ADDR(&client, 192, 168, 7, 2);
+    struct udp_pcb* dpcb = udp_new();
+
+    // Start listening for control connections.
+    struct tcp_pcb* listen = tcp_listen(cpcb);
     tcp_accept(listen, srv_accept);
 
     // Start LED indicator.
     add_repeating_timer_ms(250, led_timer, NULL, &timer);
 
+    // Start stream right away.
+    start_stream(NULL);
+
+    pbuf_a = pbuf_alloc(PBUF_RAW, CAPTURE_DEPTH, PBUF_RAM);
+    pbuf_b = pbuf_alloc(PBUF_RAW, CAPTURE_DEPTH, PBUF_RAM);
+
     // Listen to events.
     while (1) {
         network_step();
-
-        if (dataval) {
-            dataval = false;
-
-            if (head == 0) {
-                tcp_write(client, &capture_buf_a, CAPTURE_DEPTH, TCP_WRITE_FLAG_COPY);
-                dma_channel_set_write_addr(dma_chan_a, &capture_buf_a, false);
-            }
-
-            if (head == 1) {
-                tcp_write(client, &capture_buf_b, CAPTURE_DEPTH, TCP_WRITE_FLAG_COPY);
-                dma_channel_set_write_addr(dma_chan_b, &capture_buf_b, false);
-            }
-
-            tcp_output(client);
-        }
+        udp_sendto(dpcb, pbuf_a, &client, 7778);
     }
 
     return 0;
