@@ -7,32 +7,36 @@
 #include "hardware/irq.h"
 #include "usb_network.h"
 
-bool streaming = false;
-struct tcp_pcb* control = NULL;
+uint data_ovf;
+uint data_dma;
+bool data_val;
+bool streaming;
 struct repeating_timer timer;
 
 #define CAPTURE_CHANNEL 0
 #define CAPTURE_DEPTH 1472
 
 uint dma_chan_a, dma_chan_b;
-struct pbuf* pbuf_a;
-struct pbuf* pbuf_b;
+struct pbuf *pbuf_a, *pbuf_b;
 
-static void printc(char* s) {
-    if (control) {
-        tcp_write(control, s, strlen(s), TCP_WRITE_FLAG_COPY);
-        tcp_output(control);
+static void dma_handler(uint id) {
+    if (data_val) {
+        data_ovf += 1;
     }
+    data_dma = id;
+    data_val = true;
 }
 
 static void dma_handler_a() {
-    dma_hw->ints0 = 1u << dma_chan_a;
+    dma_handler(0);
     dma_channel_set_write_addr(dma_chan_a, pbuf_a->payload, false);
+    dma_hw->ints0 = 1u << dma_chan_a;
 }
 
 static void dma_handler_b() {
-    dma_hw->ints1 = 1u << dma_chan_b;
+    dma_handler(1);
     dma_channel_set_write_addr(dma_chan_b, pbuf_b->payload, false);
+    dma_hw->ints1 = 1u << dma_chan_b;
 }
 
 static void init_adc_dma_chain() {
@@ -100,21 +104,21 @@ static void init_adc_dma_chain() {
 
 static void start_stream(struct tcp_pcb *pcb) {
     if (streaming) {
-        printc("[PICCOLO] Stream already started.\n");
         return;
     }
+
+    data_ovf = 0;
+    data_dma = 0;
+    data_val = false;
+    streaming = true;
 
     dma_channel_set_write_addr(dma_chan_a, pbuf_a->payload, true);
     dma_channel_set_write_addr(dma_chan_b, pbuf_b->payload, false);
     adc_run(true);
-
-    streaming = true;
-    printc("[PICCOLO] Stream started.\n");
 }
 
 static void stop_stream(struct tcp_pcb *pcb) {
     if (!streaming) {
-        printc("[PICCOLO] Stream already stopped.\n");
         return;
     }
 
@@ -123,54 +127,10 @@ static void stop_stream(struct tcp_pcb *pcb) {
     dma_channel_set_write_addr(dma_chan_a, pbuf_a->payload, false);
     dma_channel_set_write_addr(dma_chan_b, pbuf_b->payload, false);
 
+    data_ovf = 0;
+    data_dma = 0;
+    data_val = false;
     streaming = false;
-    printc("[PICCOLO] Stream stopped.\n");
-}
-
-static void srv_err(void *arg, err_t err) {
-    tcp_arg(control, NULL);
-    tcp_sent(control, NULL);
-    tcp_recv(control, NULL);
-    tcp_close(control);
-}
-
-static err_t srv_receive(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err) {
-    if (err != ERR_OK) {
-        goto exception;
-    }
-
-    tcp_recved(pcb, p->tot_len);
-    tcp_sent(pcb, NULL);
-
-    if (((char*)p->payload)[0] == 'S') {
-        start_stream(pcb);
-    }
-
-    if (((char*)p->payload)[0] == 'E') {
-        stop_stream(pcb);
-    }
-
-exception:
-    if (p != NULL) {
-        pbuf_free(p);
-    }
-
-    return err;
-}
-
-static err_t srv_accept(void * arg, struct tcp_pcb * pcb, err_t err) {
-    if (err != ERR_OK) {
-        return err;
-    }
-
-    tcp_setprio(pcb, TCP_PRIO_MIN);
-    tcp_recv(pcb, srv_receive);
-    tcp_err(pcb, NULL);
-    tcp_poll(pcb, NULL, 4);
-
-    control = pcb;
-
-    return err;
 }
 
 static bool led_timer(struct repeating_timer *t) {
@@ -187,26 +147,25 @@ int main(void) {
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
-    // Init ADC DMA chain.
-    init_adc_dma_chain();
-
     // Init network stack.
     network_init();
 
-    // Start control TCP port.
-    struct tcp_pcb* cpcb = tcp_new();
-    cpcb->so_options |= SOF_KEEPALIVE;
-    cpcb->keep_intvl = 75000000;
-    tcp_bind(cpcb, IP_ADDR_ANY, 7777);
+    // Allocate zero-copy memory for DMA and UDP.
+    pbuf_a = pbuf_alloc(PBUF_RAW, CAPTURE_DEPTH, PBUF_RAM);
+    pbuf_b = pbuf_alloc(PBUF_RAW, CAPTURE_DEPTH, PBUF_RAM);
+
+    if (pbuf_a == NULL && pbuf_b == NULL) {
+        return 1;
+    }
+
+    // Init ADC DMA chain.
+    init_adc_dma_chain();
 
     // Start data UDP port.
     ip_addr_t client;
-    IP4_ADDR(&client, 192, 168, 7, 2);
     struct udp_pcb* dpcb = udp_new();
-
-    // Start listening for control connections.
-    struct tcp_pcb* listen = tcp_listen(cpcb);
-    tcp_accept(listen, srv_accept);
+    IP4_ADDR(&client, 192, 168, 7, 2);
+    udp_connect(dpcb, &client, 7778);
 
     // Start LED indicator.
     add_repeating_timer_ms(250, led_timer, NULL, &timer);
@@ -214,13 +173,20 @@ int main(void) {
     // Start stream right away.
     start_stream(NULL);
 
-    pbuf_a = pbuf_alloc(PBUF_RAW, CAPTURE_DEPTH, PBUF_RAM);
-    pbuf_b = pbuf_alloc(PBUF_RAW, CAPTURE_DEPTH, PBUF_RAM);
-
     // Listen to events.
     while (1) {
+        if (data_val && streaming) {
+            if (data_dma == 0) {
+                udp_send(dpcb, pbuf_a);
+            }
+            if (data_dma == 1) {
+                udp_send(dpcb, pbuf_b);
+            }
+
+            data_val = false;
+        }
+
         network_step();
-        udp_sendto(dpcb, pbuf_a, &client, 7778);
     }
 
     return 0;

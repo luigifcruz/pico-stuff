@@ -77,42 +77,27 @@ blocks:
     coordinate: [403, 167]
     rotation: 0
     state: true
-- name: blocks_vector_to_stream_0
-  id: blocks_vector_to_stream
+- name: grnet_udp_source_0
+  id: grnet_udp_source
   parameters:
     affinity: ''
     alias: ''
     comment: ''
+    header: '0'
+    ipv6: 'False'
     maxoutbuf: '0'
     minoutbuf: '0'
-    num_items: '500'
+    notifyMissed: 'False'
+    payloadsize: '1472'
+    port: '7778'
+    srcZeros: 'False'
     type: byte
     vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [211, 167]
-    rotation: 0
-    state: true
-- name: grnet_tcp_source_0
-  id: grnet_tcp_source
-  parameters:
-    addr: 192.168.7.1
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    port: '7777'
-    server: 'False'
-    type: byte
-    vlen: '500'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [22, 140]
+    coordinate: [37, 173]
     rotation: 0
     state: true
 - name: qtgui_freq_sink_x_0
@@ -359,8 +344,7 @@ connections:
 - [blocks_multiply_const_vxx_0, '0', qtgui_time_sink_x_0, '0']
 - [blocks_multiply_const_vxx_0, '0', qtgui_waterfall_sink_x_0, '0']
 - [blocks_uchar_to_float_0, '0', blocks_multiply_const_vxx_0, '0']
-- [blocks_vector_to_stream_0, '0', blocks_uchar_to_float_0, '0']
-- [grnet_tcp_source_0, '0', blocks_vector_to_stream_0, '0']
+- [grnet_udp_source_0, '0', blocks_uchar_to_float_0, '0']
 
 metadata:
   file_format: 1

@@ -35,7 +35,8 @@
 /* Prevent having to link sys_arch.c (we don't test the API layers in unit tests) */
 #define NO_SYS                          1
 #define MEM_ALIGNMENT                   4
-#define LWIP_RAW                        0
+#define MEM_SIZE                        8192 * 8
+#define LWIP_RAW                        1
 #define LWIP_NETCONN                    0
 #define LWIP_SOCKET                     0
 #define LWIP_DHCP                       0
