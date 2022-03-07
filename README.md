@@ -27,12 +27,6 @@ $ make -j$(nproc -n)
 ## About the project
 This project was created and maintained since 2021 by [Luigi Cruz](https://luigi.ltd).
 
-### Donation
-Donations are welcome. I have no commercial interest in this code. Your donation will help me buy more hardware.
-- [Patreon](https://www.patreon.com/luigifcruz)
-- [Buy Me a Coffee](https://www.buymeacoffee.com/luigi)
-- [PayPal](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=TAA65AJMC7498&source=url)
-
 ### Support
 Feel free to hit me up on [Twitter](https://twitter.com/luigifcruz) or [Email](mailto:luigifcruz@gmail.com) if your question isn't answered by this documentation. If you found a bug, please, report it directly on [GitHub Issues](https://github.com/luigifreitas/pisdr-image/issues).
 
