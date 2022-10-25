@@ -1,8 +1,8 @@
 # Barometer
-This example can read temperature and atmospheric pressure using the BMP180 sensor.
+This example can read temperature and atmospheric pressure using the BMP180 or BMP390 sensor.
 
 ### Dependencies Device
-- [BMP180](/lib/bmp180) Library.
+- [BMP180](/lib/bmp180) or [BMP390](/lib/bmp390) Library.
 
 ### Usage
 This program will start collecting samples when it receives a char from the virtual serial port. It will also output the following messages:
