@@ -49,6 +49,7 @@ typedef struct {
     uint8_t oss;
     float temperature;
     int32_t pressure;
+    float altitude;
     bmp_calib_param_t calib;
     int32_t B5;
 } bmp_t;
