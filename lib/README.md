@@ -1,7 +1,8 @@
 # Pico Libraries
 These are libraries to make things easier or add support for some sensor.
 
-- [BMP180](/lib/bmp180): Header-only library for the BMP180 atmospheric pressure sensor.
+- [BMP180](/lib/bmp180): Header-only library for the BMP180 atmospheric pressure and temperature sensor.
+- [BMP390](/lib/bmp390): Header-only library for the BMP390 atmospheric pressure and temperature sensor.
 - [USB Network Stack](/lib/usb_network_stack): Library using TinyUSB's implementation of the RNDIS protocol to enable network over USB.
 
 ## Debug

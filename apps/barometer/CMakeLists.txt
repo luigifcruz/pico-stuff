@@ -4,7 +4,7 @@ project(pico-barometer)
 
 add_executable(barometer test.c)
 
-target_link_libraries(barometer LINK_PUBLIC bmp180)
+target_link_libraries(barometer LINK_PUBLIC bmp390)
 
 pico_add_extra_outputs(barometer)
 
