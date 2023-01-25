@@ -8,6 +8,17 @@ int main() {
     sleep_ms(5000);
     printf("Hello from Pi Pico!\n");
 
+    while(!stdio_usb_connected())
+    {
+        sleep_ms(100);
+    }
+    printf("stdio_usb_connected()\n");
+
+    char str[50];
+    printf("Enter a string: ");
+    gets(str);
+    printf("You entered: %s", str);
+
     bmp_t bmp;
     bmp.oss = 5;
     bmp.i2c.addr = 0x77;
