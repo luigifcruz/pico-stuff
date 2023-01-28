@@ -5,19 +5,12 @@
 
 int main() {
     stdio_init_all();
-    sleep_ms(5000);
-    printf("Hello from Pi Pico!\n");
-
-    while(!stdio_usb_connected())
-    {
-        sleep_ms(100);
+    
+    while (getchar_timeout_us(0) != 'X') {
+        sleep_ms(10);
     }
-    printf("stdio_usb_connected()\n");
 
-    char str[50];
-    printf("Enter a string: ");
-    gets(str);
-    printf("You entered: %s", str);
+    printf("Hello from Pi Pico!\n");
 
     bmp_t bmp;
     bmp.oss = 5;
