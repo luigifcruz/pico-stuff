@@ -5,7 +5,11 @@
 
 int main() {
     stdio_init_all();
-    sleep_ms(5000);
+    
+    while (getchar_timeout_us(0) != 'X') {
+        sleep_ms(10);
+    }
+
     printf("Hello from Pi Pico!\n");
 
     bmp_t bmp;
