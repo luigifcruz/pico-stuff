@@ -10,3 +10,6 @@
 [submodule "pico-playground"]
 	path = pico-playground
 	url = git@github.com:raspberrypi/pico-playground.git
+[submodule "lib/littlefs/littlefs"]
+	path = lib/littlefs/littlefs
+	url = https://github.com/littlefs-project/littlefs.git
