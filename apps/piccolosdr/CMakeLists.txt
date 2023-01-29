@@ -14,7 +14,7 @@ target_link_libraries(piccolosdr LINK_PUBLIC
 
 pico_add_extra_outputs(piccolosdr)
 
-pico_enable_stdio_usb(piccolosdr 1)
+pico_enable_stdio_usb(piccolosdr 0)
 pico_enable_stdio_uart(piccolosdr 0)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
