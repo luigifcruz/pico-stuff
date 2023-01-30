@@ -12,7 +12,7 @@
 #include "pico/stdio.h"
 #include "pico/stdlib.h"
 
-const struct lfs_config lfs_rp2040_init();
+void lfs_rp2040_init(struct lfs_config* cfg);
 
 int lfs_rp2040_read(const struct lfs_config *c, lfs_block_t block,
                     lfs_off_t off, void *buffer, lfs_size_t size);

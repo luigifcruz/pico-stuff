@@ -9,6 +9,7 @@
 // variables used by the filesystem
 lfs_t lfs;
 lfs_file_t file;
+struct lfs_config cfg;
 
 // entry point
 int main(void) {
@@ -20,7 +21,7 @@ int main(void) {
 
     printf("Hello from Pi Pico!\n");
 
-    const struct lfs_config cfg = lfs_rp2040_init();
+    lfs_rp2040_init(&cfg);
 
     // mount the filesystem
     int err = lfs_mount(&lfs, &cfg);
