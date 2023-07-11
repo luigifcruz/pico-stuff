@@ -10,7 +10,7 @@ I add my Pi Pico (RP2040) stuff here. There are complete [apps](/apps) and [libr
 ## Apps
 - [PiccoloSDR](/apps/piccolosdr): A primitive direct-sampling SDR.
 - [ADC DMA Chain](/apps/adc_dma_chain): Chained DMA data acquisition from the ADC.
-- [Barometer](/apps/barometer): Read temperature and atmospheric pressure from a BMP180.
+- [Barometer](/apps/barometer): Read temperature and atmospheric pressure from a BMP180/BMP390.
 - [Iperf Server](/apps/iperf_server): A tool to measure the performance of the TinyUSB's TCP/IP stack over USB.
 - [TCP Server](/apps/tcp_server): A TCP server example to send high-frequency data to the host computer.
 - [Filesystem](/apps/filesystem): A simple non-volatile filesystem based on LittleFS. It uses the internal flash.
