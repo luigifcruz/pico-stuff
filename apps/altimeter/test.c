@@ -146,7 +146,7 @@ int main(void) {
                 printf("Type the recording index.\n");
                 scanf("%d", &index);
 
-                if (index >= read_boot_count(false)) {
+                if (index > read_boot_count(false)) {
                     printf("Index out of range.\n");
                     break;
                 }
