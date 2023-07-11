@@ -39,7 +39,7 @@ int main(void) {
         uint8_t sop[4];
         fusb_read_fifo(&fusb, 1,  &sop);
 
-        if (sop[0] == 0xe0) {
+        if (sop[0] == FUSB_PACKET_START_MARKER) {
             fusb_read_fifo(&fusb, 2, &sop);
             usb_pd_parse_header(&usbpd, sop);
             for (uint16_t i = 0; i < usbpd.number_of_data_objects; i++) {

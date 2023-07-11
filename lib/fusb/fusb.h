@@ -10,6 +10,8 @@
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 
+#define FUSB_PACKET_START_MARKER 0xe0
+
 typedef struct {
     int addr;
     int rate;
