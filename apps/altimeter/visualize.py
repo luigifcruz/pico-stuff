@@ -4,6 +4,7 @@ from matplotlib.ticker import FormatStrFormatter
 
 # Convert HEX file to BIN.
 # cat D4.hex | xxd -r -p > D4.bin
+# Checkout example_data for data examples.
 
 data = np.fromfile('./D5.bin', dtype=np.float32)
 temp_x = data[0::2]
